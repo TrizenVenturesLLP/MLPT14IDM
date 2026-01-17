@@ -21,6 +21,7 @@ interface AnalysisResult {
 
 export default function Analysis() {
   const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [caseId, setCaseId] = useState("");
   const [sector, setSector] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -30,6 +31,7 @@ export default function Analysis() {
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setUploadedFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
@@ -42,6 +44,7 @@ export default function Analysis() {
     e.preventDefault();
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      setUploadedFile(file);
       const reader = new FileReader();
       reader.onload = (event) => {
         setUploadedImage(event.target?.result as string);
@@ -55,24 +58,53 @@ export default function Analysis() {
   };
 
   const handleAnalyze = async () => {
-    if (!uploadedImage) return;
+    if (!uploadedFile) return;
     
     setIsAnalyzing(true);
-    // Simulate analysis
-    await new Promise((resolve) => setTimeout(resolve, 2000));
-    
-    setResult({
-      status: "normal",
-      livenessScore: 0.99,
-      usageScore: 1.00,
-      combinedScore: 0.99,
-      summary: "Fingerprint appears live and usage patterns are normal",
-    });
-    setIsAnalyzing(false);
+    try {
+      const formData = new FormData();
+      formData.append('file', uploadedFile);
+      if (caseId) formData.append('case_id', caseId);
+      formData.append('sector', sector || 'unknown');
+      
+      const response = await fetch('http://localhost:8000/analyze-fingerprint', {
+        method: 'POST',
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      
+      // Map backend response to frontend format
+      const riskLevel = data.risk_level.toLowerCase();
+      setResult({
+        status: riskLevel === "normal" ? "normal" : riskLevel === "suspicious" ? "suspicious" : riskLevel === "high" ? "high_risk" : "normal",
+        livenessScore: data.liveness_score,
+        usageScore: data.usage_score || 1.0,
+        combinedScore: data.combined_score || data.liveness_score,
+        summary: data.explanation,
+      });
+    } catch (error) {
+      console.error('Analysis failed:', error);
+      // For now, show a mock result on error
+      setResult({
+        status: "error",
+        livenessScore: 0.0,
+        usageScore: 0.0,
+        combinedScore: 0.0,
+        summary: "Analysis failed. Please check if the backend is running.",
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleReset = () => {
     setUploadedImage(null);
+    setUploadedFile(null);
     setCaseId("");
     setSector("");
     setResult(null);
@@ -86,6 +118,8 @@ export default function Analysis() {
         return "bg-amber-500";
       case "high_risk":
         return "bg-red-500";
+      case "error":
+        return "bg-gray-500";
       default:
         return "bg-muted";
     }
@@ -99,6 +133,8 @@ export default function Analysis() {
         return "SUSPICIOUS";
       case "high_risk":
         return "HIGH RISK";
+      case "error":
+        return "ERROR";
       default:
         return status.toUpperCase();
     }
@@ -210,7 +246,7 @@ export default function Analysis() {
           {/* Analyze Button */}
           <Button
             onClick={handleAnalyze}
-            disabled={!uploadedImage || isAnalyzing}
+            disabled={!uploadedFile || isAnalyzing}
             className="w-full mt-6 bg-gradient-to-r from-primary via-accent to-purple-500 hover:opacity-90 text-white font-semibold py-6 text-lg"
           >
             {isAnalyzing ? (
