@@ -1,84 +1,280 @@
-import { useState } from "react";
-import { AnalysisForm, AnalysisData } from "@/components/analysis/AnalysisForm";
-import { AnalysisResult } from "@/components/analysis/AnalysisResult";
-import { ArrowLeft } from "lucide-react";
+import { useState, useRef } from "react";
+import { Link } from "react-router-dom";
+import { Upload, Fingerprint, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
-const mockResult = {
-  riskLevel: "high" as const,
-  riskScore: 87,
-  summary: "This fingerprint usage has been flagged as HIGH RISK due to multiple concerning indicators. The fingerprint was used 3 days after the registered identity was marked as deceased. Additionally, the usage pattern shows sudden activity after 8 months of inactivity, and the fingerprint quality analysis indicates potential post-mortem degradation markers.",
-  agents: {
-    usagePattern: {
-      usageFrequency: "3 uses in 48 hours",
-      unrelatedCaseReuse: true,
-      inactivityToActivity: true,
-      riskScore: 78,
-      reasoning: "The fingerprint shows a pattern of sudden reactivation after 8 months of complete inactivity. This is a strong indicator of potential misuse, especially when combined with cross-sector usage between forensic and hospital systems.",
-    },
-    postMortem: {
-      ridgeClarity: 62,
-      textureScore: 45,
-      distortionIndicators: ["Elasticity degradation", "Ridge flattening", "Moisture anomaly"],
-      confidence: 84,
-      reasoning: "Biometric quality analysis indicates signs consistent with post-mortem tissue degradation. Ridge clarity and texture scores are below expected thresholds for a living individual. Multiple distortion indicators suggest the fingerprint may have been captured from deceased tissue.",
-    },
-    contextReasoning: {
-      statusMismatch: true,
-      combinedReasoning: "The identity associated with this fingerprint was marked as deceased on 2024-01-15, yet the fingerprint was used for hospital patient verification on 2024-01-18. This temporal inconsistency, combined with the biometric degradation indicators and unusual usage patterns, strongly suggests fraudulent post-mortem use of the fingerprint.",
-      finalVerdict: "HIGH RISK - IMMEDIATE INVESTIGATION REQUIRED",
-    },
-  },
-};
+interface AnalysisResult {
+  status: "normal" | "suspicious" | "high_risk";
+  livenessScore: number;
+  usageScore: number;
+  combinedScore: number;
+  summary: string;
+}
 
 export default function Analysis() {
-  const [result, setResult] = useState<typeof mockResult | null>(null);
+  const [uploadedImage, setUploadedImage] = useState<string | null>(null);
+  const [caseId, setCaseId] = useState("");
+  const [sector, setSector] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleSubmit = async (data: AnalysisData) => {
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    const file = e.dataTransfer.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        setUploadedImage(event.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleAnalyze = async () => {
+    if (!uploadedImage) return;
+    
     setIsAnalyzing(true);
-    // Simulate analysis delay
+    // Simulate analysis
     await new Promise((resolve) => setTimeout(resolve, 2000));
-    setResult(mockResult);
+    
+    setResult({
+      status: "normal",
+      livenessScore: 0.99,
+      usageScore: 1.00,
+      combinedScore: 0.99,
+      summary: "Fingerprint appears live and usage patterns are normal",
+    });
     setIsAnalyzing(false);
   };
 
   const handleReset = () => {
+    setUploadedImage(null);
+    setCaseId("");
+    setSector("");
     setResult(null);
   };
 
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "normal":
+        return "bg-emerald-500";
+      case "suspicious":
+        return "bg-amber-500";
+      case "high_risk":
+        return "bg-red-500";
+      default:
+        return "bg-muted";
+    }
+  };
+
+  const getStatusText = (status: string) => {
+    switch (status) {
+      case "normal":
+        return "NORMAL";
+      case "suspicious":
+        return "SUSPICIOUS";
+      case "high_risk":
+        return "HIGH RISK";
+      default:
+        return status.toUpperCase();
+    }
+  };
+
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Page Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Fingerprint Analysis</h1>
-          <p className="text-muted-foreground">
-            Submit fingerprint data for usage risk assessment
+    <div className="min-h-screen bg-background">
+      {/* Background gradient */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background pointer-events-none" />
+      
+      <div className="relative max-w-3xl mx-auto px-6 py-12">
+        {/* Back to Landing */}
+        <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
+          <ArrowLeft className="w-4 h-4" />
+          Back to Home
+        </Link>
+
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-4xl md:text-5xl font-bold mb-3">
+            <span className="bg-gradient-to-r from-primary via-accent to-primary bg-clip-text text-transparent">
+              Fingerprint Risk Analysis
+            </span>
+          </h1>
+          <p className="text-muted-foreground text-lg">
+            Multi-agent liveness and usage pattern detection
           </p>
         </div>
-        {result && (
-          <Button variant="outline" onClick={handleReset} className="gap-2">
-            <ArrowLeft className="w-4 h-4" />
-            New Analysis
+
+        {/* Agent Badges */}
+        <div className="flex flex-wrap items-center justify-center gap-3 mb-10">
+          <div className="px-4 py-2 rounded-full bg-muted/50 border border-border text-sm text-foreground">
+            Agent 1: Usage Pattern
+          </div>
+          <div className="px-4 py-2 rounded-full bg-muted/50 border border-border text-sm text-foreground">
+            Agent 2: Liveness Detection
+          </div>
+          <div className="px-4 py-2 rounded-full bg-muted/50 border border-border text-sm text-foreground">
+            Agent 3: Risk Engine
+          </div>
+        </div>
+
+        {/* Upload Area */}
+        <div className="glass-panel p-8 mb-6">
+          <div
+            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            className="border-2 border-dashed border-border/70 rounded-xl p-10 text-center cursor-pointer hover:border-primary/50 transition-colors"
+          >
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".png,.jpg,.jpeg,.bmp"
+              onChange={handleFileUpload}
+              className="hidden"
+            />
+            
+            {!uploadedImage ? (
+              <>
+                <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
+                  <Upload className="w-8 h-8 text-primary" />
+                </div>
+                <p className="text-foreground mb-1">
+                  Drop fingerprint image here or <span className="font-semibold text-primary">click to upload</span>
+                </p>
+                <p className="text-sm text-muted-foreground">Supports PNG, JPG, BMP</p>
+              </>
+            ) : (
+              <div className="flex flex-col items-center">
+                <img 
+                  src={uploadedImage} 
+                  alt="Uploaded fingerprint" 
+                  className="w-24 h-24 object-cover rounded-lg mb-4 border border-border"
+                />
+                <p className="text-sm text-muted-foreground">Click to upload a different image</p>
+              </div>
+            )}
+          </div>
+
+          {/* Form Fields */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Case ID (optional)</label>
+              <Input
+                placeholder="e.g., CASE-001"
+                value={caseId}
+                onChange={(e) => setCaseId(e.target.value)}
+                className="bg-muted/30 border-border"
+              />
+            </div>
+            <div>
+              <label className="text-sm text-muted-foreground mb-2 block">Sector</label>
+              <Select value={sector} onValueChange={setSector}>
+                <SelectTrigger className="bg-muted/30 border-border">
+                  <SelectValue placeholder="Unknown" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="unknown">Unknown</SelectItem>
+                  <SelectItem value="forensic">Forensic</SelectItem>
+                  <SelectItem value="hospital">Hospital</SelectItem>
+                  <SelectItem value="border">Border Control</SelectItem>
+                  <SelectItem value="banking">Banking</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Analyze Button */}
+          <Button
+            onClick={handleAnalyze}
+            disabled={!uploadedImage || isAnalyzing}
+            className="w-full mt-6 bg-gradient-to-r from-primary via-accent to-purple-500 hover:opacity-90 text-white font-semibold py-6 text-lg"
+          >
+            {isAnalyzing ? (
+              <div className="flex items-center gap-3">
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Analyzing...
+              </div>
+            ) : (
+              <>
+                <Fingerprint className="w-5 h-5 mr-2" />
+                Analyze Fingerprint
+              </>
+            )}
           </Button>
+        </div>
+
+        {/* Analysis Result */}
+        {result && (
+          <div className="glass-panel p-8 fade-in">
+            <div className="flex items-center gap-4 mb-6">
+              <h2 className="text-xl font-bold text-foreground">Analysis Result</h2>
+              <span className={`px-4 py-1.5 rounded-full text-sm font-semibold text-white ${getStatusColor(result.status)}`}>
+                {getStatusText(result.status)}
+              </span>
+            </div>
+
+            {/* Score Cards */}
+            <div className="grid grid-cols-3 gap-4 mb-6">
+              <div className="bg-muted/30 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-emerald-400 mb-1">
+                  {result.livenessScore.toFixed(2)}
+                </div>
+                <div className="text-sm text-muted-foreground">Liveness Score</div>
+              </div>
+              <div className="bg-muted/30 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-emerald-400 mb-1">
+                  {result.usageScore.toFixed(2)}
+                </div>
+                <div className="text-sm text-muted-foreground">Usage Score</div>
+              </div>
+              <div className="bg-muted/30 rounded-xl p-6 text-center">
+                <div className="text-3xl font-bold text-emerald-400 mb-1">
+                  {result.combinedScore.toFixed(2)}
+                </div>
+                <div className="text-sm text-muted-foreground">Combined Score</div>
+              </div>
+            </div>
+
+            {/* Summary */}
+            <div className="bg-muted/20 rounded-xl p-4 border-l-4 border-emerald-500">
+              <p className="text-foreground">{result.summary}</p>
+            </div>
+
+            {/* Reset Button */}
+            <Button
+              variant="outline"
+              onClick={handleReset}
+              className="w-full mt-6"
+            >
+              Analyze Another Fingerprint
+            </Button>
+          </div>
         )}
       </div>
-
-      {/* Loading State */}
-      {isAnalyzing && (
-        <div className="glass-panel p-12 text-center fade-in">
-          <div className="inline-block w-16 h-16 border-4 border-primary/30 border-t-primary rounded-full animate-spin mb-4" />
-          <h3 className="text-lg font-semibold text-foreground mb-2">Analyzing Fingerprint Usage</h3>
-          <p className="text-muted-foreground">
-            Running multi-agent analysis across usage patterns, biometric indicators, and context reasoning...
-          </p>
-        </div>
-      )}
-
-      {/* Form or Result */}
-      {!isAnalyzing && !result && <AnalysisForm onSubmit={handleSubmit} />}
-      {!isAnalyzing && result && <AnalysisResult {...result} />}
     </div>
   );
 }
