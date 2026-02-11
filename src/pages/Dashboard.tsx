@@ -1,10 +1,49 @@
+import { useState, useEffect } from "react";
 import { Fingerprint, AlertTriangle, Shield, Link2 } from "lucide-react";
 import { MetricCard } from "@/components/dashboard/MetricCard";
 import { RiskDistributionChart } from "@/components/dashboard/RiskDistributionChart";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { ActivityTimeline } from "@/components/dashboard/ActivityTimeline";
 
+interface DashboardStats {
+  total: number;
+  suspicious: number;
+  highRisk: number;
+  totalRecords: number;
+  activity: any[];
+}
+
 export default function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    total: 0,
+    suspicious: 0,
+    highRisk: 0,
+    totalRecords: 0,
+    activity: []
+  });
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch("http://localhost:8000/stats");
+        if (response.ok) {
+          const data = await response.json();
+          setStats(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch statistics:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchStats();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchStats, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -25,71 +64,47 @@ export default function Dashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <MetricCard
           title="Total Fingerprints Analyzed"
-          value="1,046"
-          subtitle="Last 30 days"
+          value={stats.total.toLocaleString()}
+          subtitle="All time"
           icon={Fingerprint}
-          trend={{ value: 12, isPositive: true }}
+          trend={{ value: 0, isPositive: true }}
           variant="default"
         />
         <MetricCard
           title="Suspicious Cases"
-          value="156"
+          value={stats.suspicious.toLocaleString()}
           subtitle="Requires review"
           icon={AlertTriangle}
-          trend={{ value: 8, isPositive: false }}
+          trend={{ value: 0, isPositive: false }}
           variant="warning"
         />
         <MetricCard
           title="High Risk Alerts"
-          value="43"
+          value={stats.highRisk.toLocaleString()}
           subtitle="Critical attention"
           icon={Shield}
-          trend={{ value: 15, isPositive: false }}
+          trend={{ value: 0, isPositive: false }}
           variant="danger"
         />
         <MetricCard
-          title="Blockchain Records"
-          value="2,847"
-          subtitle="Immutable logs"
-          icon={Link2}
-          trend={{ value: 23, isPositive: true }}
+          title="Total Records"
+          value={stats.totalRecords.toLocaleString()}
+          subtitle="Database entries"
+          icon={Shield}
+          trend={{ value: 0, isPositive: true }}
           variant="success"
         />
       </div>
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <RiskDistributionChart />
-        <ActivityTimeline />
+        <RiskDistributionChart suspicious={stats.suspicious} real={stats.total - stats.suspicious} />
+        <ActivityTimeline data={stats.activity} />
       </div>
 
       {/* Alerts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="max-w-4xl mx-auto">
         <RecentAlerts />
-        
-        {/* System Status */}
-        <div className="glass-panel p-6 fade-in">
-          <h3 className="text-lg font-semibold text-foreground mb-4">System Status</h3>
-          <div className="space-y-4">
-            {[
-              { name: "AI Analysis Engine", status: "operational", latency: "45ms" },
-              { name: "Blockchain Network", status: "operational", latency: "120ms" },
-              { name: "Database Cluster", status: "operational", latency: "12ms" },
-              { name: "Authentication Service", status: "operational", latency: "28ms" },
-            ].map((service) => (
-              <div key={service.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-success" />
-                  <span className="text-sm font-medium text-foreground">{service.name}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                  <span className="text-xs font-mono text-muted-foreground">{service.latency}</span>
-                  <span className="text-xs text-success capitalize">{service.status}</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
       {/* Disclaimer */}
@@ -99,7 +114,7 @@ export default function Dashboard() {
           <div>
             <p className="text-sm font-medium text-foreground">Decision Support System</p>
             <p className="text-xs text-muted-foreground mt-1">
-              This system provides analytical insights for investigative purposes only. 
+              This system provides analytical insights for investigative purposes only.
               All risk assessments require human verification before any legal conclusions are drawn.
             </p>
           </div>

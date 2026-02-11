@@ -18,9 +18,6 @@ const navItems = [
   { icon: LayoutDashboard, label: "Dashboard", path: "/" },
   { icon: Fingerprint, label: "Fingerprint Analysis", path: "/analysis" },
   { icon: FolderOpen, label: "Case Records", path: "/cases" },
-  { icon: AlertTriangle, label: "Risk Alerts", path: "/alerts" },
-  { icon: Link2, label: "Blockchain Logs", path: "/blockchain" },
-  { icon: Brain, label: "AI Agent Explanations", path: "/agents" },
   { icon: Settings, label: "Settings", path: "/settings" },
 ];
 

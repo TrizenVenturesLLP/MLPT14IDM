@@ -61,6 +61,8 @@ export default function Analysis() {
     try {
       const formData = new FormData();
       formData.append('file', uploadedFile);
+      if (caseId) formData.append('case_id', caseId);
+      formData.append('sector', sector || 'unknown');
 
       const response = await fetch('http://localhost:8000/predict', {
         method: 'POST',

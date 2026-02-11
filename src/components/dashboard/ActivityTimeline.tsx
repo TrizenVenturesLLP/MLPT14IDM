@@ -1,16 +1,10 @@
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 
-const data = [
-  { name: "Mon", analyses: 124, alerts: 8 },
-  { name: "Tue", analyses: 156, alerts: 12 },
-  { name: "Wed", analyses: 189, alerts: 15 },
-  { name: "Thu", analyses: 145, alerts: 9 },
-  { name: "Fri", analyses: 178, alerts: 11 },
-  { name: "Sat", analyses: 89, alerts: 5 },
-  { name: "Sun", analyses: 67, alerts: 3 },
-];
+interface ActivityTimelineProps {
+  data: any[];
+}
 
-export function ActivityTimeline() {
+export function ActivityTimeline({ data }: ActivityTimelineProps) {
   return (
     <div className="glass-panel p-6 fade-in">
       <h3 className="text-lg font-semibold text-foreground mb-4">Weekly Activity</h3>

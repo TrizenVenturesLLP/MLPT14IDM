@@ -1,12 +1,16 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from "recharts";
 
-const data = [
-  { name: "Normal", value: 847, color: "hsl(152, 60%, 40%)" },
-  { name: "Suspicious", value: 156, color: "hsl(38, 92%, 50%)" },
-  { name: "High Risk", value: 43, color: "hsl(0, 72%, 51%)" },
-];
+interface RiskDistributionChartProps {
+  suspicious: number;
+  real: number;
+}
 
-export function RiskDistributionChart() {
+export function RiskDistributionChart({ suspicious, real }: RiskDistributionChartProps) {
+  const data = [
+    { name: "Real", value: real, color: "hsl(152, 60%, 40%)" },
+    { name: "Suspicious", value: suspicious, color: "hsl(38, 92%, 50%)" },
+  ];
+
   return (
     <div className="glass-panel p-6 fade-in">
       <h3 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h3>
@@ -41,7 +45,7 @@ export function RiskDistributionChart() {
           </PieChart>
         </ResponsiveContainer>
       </div>
-      <div className="grid grid-cols-3 gap-4 mt-4">
+      <div className="grid grid-cols-2 gap-4 mt-4">
         {data.map((item) => (
           <div key={item.name} className="text-center">
             <p className="text-2xl font-bold" style={{ color: item.color }}>
