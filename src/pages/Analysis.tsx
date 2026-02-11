@@ -12,10 +12,7 @@ import {
 } from "@/components/ui/select";
 
 interface AnalysisResult {
-  status: "normal" | "suspicious" | "high_risk";
-  livenessScore: number;
-  usageScore: number;
-  combinedScore: number;
+  prediction: "REAL" | "SUSPICIOUS";
   summary: string;
 }
 
@@ -59,42 +56,31 @@ export default function Analysis() {
 
   const handleAnalyze = async () => {
     if (!uploadedFile) return;
-    
+
     setIsAnalyzing(true);
     try {
       const formData = new FormData();
       formData.append('file', uploadedFile);
-      if (caseId) formData.append('case_id', caseId);
-      formData.append('sector', sector || 'unknown');
-      
-      const response = await fetch('http://localhost:8000/analyze-fingerprint', {
+
+      const response = await fetch('http://localhost:8000/predict', {
         method: 'POST',
         body: formData,
       });
-      
+
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
-      
+
       const data = await response.json();
-      
-      // Map backend response to frontend format
-      const riskLevel = data.risk_level.toLowerCase();
+
       setResult({
-        status: riskLevel === "normal" ? "normal" : riskLevel === "suspicious" ? "suspicious" : riskLevel === "high" ? "high_risk" : "normal",
-        livenessScore: data.liveness_score,
-        usageScore: data.usage_score || 1.0,
-        combinedScore: data.combined_score || data.liveness_score,
-        summary: data.explanation,
+        prediction: data.prediction === "Real" ? "REAL" : "SUSPICIOUS",
+        summary: `The model predicted this fingerprint as ${data.prediction} with ${data.confidence}% confidence.`,
       });
     } catch (error) {
       console.error('Analysis failed:', error);
-      // For now, show a mock result on error
       setResult({
-        status: "error",
-        livenessScore: 0.0,
-        usageScore: 0.0,
-        combinedScore: 0.0,
+        prediction: "SUSPICIOUS", // Fallback on error
         summary: "Analysis failed. Please check if the backend is running.",
       });
     } finally {
@@ -110,41 +96,26 @@ export default function Analysis() {
     setResult(null);
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "normal":
+  const getStatusColor = (prediction: string) => {
+    switch (prediction) {
+      case "REAL":
         return "bg-emerald-500";
-      case "suspicious":
+      case "SUSPICIOUS":
         return "bg-amber-500";
-      case "high_risk":
-        return "bg-red-500";
-      case "error":
-        return "bg-gray-500";
       default:
-        return "bg-muted";
+        return "bg-gray-500";
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status) {
-      case "normal":
-        return "NORMAL";
-      case "suspicious":
-        return "SUSPICIOUS";
-      case "high_risk":
-        return "HIGH RISK";
-      case "error":
-        return "ERROR";
-      default:
-        return status.toUpperCase();
-    }
+  const getStatusText = (prediction: string) => {
+    return prediction;
   };
 
   return (
     <div className="min-h-screen bg-background">
       {/* Background gradient */}
       <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-background to-background pointer-events-none" />
-      
+
       <div className="relative max-w-3xl mx-auto px-6 py-12">
         {/* Back to Landing */}
         <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground mb-8 transition-colors">
@@ -192,7 +163,7 @@ export default function Analysis() {
               onChange={handleFileUpload}
               className="hidden"
             />
-            
+
             {!uploadedImage ? (
               <>
                 <div className="w-16 h-16 mx-auto mb-4 rounded-xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center">
@@ -205,9 +176,9 @@ export default function Analysis() {
               </>
             ) : (
               <div className="flex flex-col items-center">
-                <img 
-                  src={uploadedImage} 
-                  alt="Uploaded fingerprint" 
+                <img
+                  src={uploadedImage}
+                  alt="Uploaded fingerprint"
                   className="w-24 h-24 object-cover rounded-lg mb-4 border border-border"
                 />
                 <p className="text-sm text-muted-foreground">Click to upload a different image</p>
@@ -268,35 +239,13 @@ export default function Analysis() {
           <div className="glass-panel p-8 fade-in">
             <div className="flex items-center gap-4 mb-6">
               <h2 className="text-xl font-bold text-foreground">Analysis Result</h2>
-              <span className={`px-4 py-1.5 rounded-full text-sm font-semibold text-white ${getStatusColor(result.status)}`}>
-                {getStatusText(result.status)}
+              <span className={`px-4 py-1.5 rounded-full text-sm font-semibold text-white ${getStatusColor(result.prediction)}`}>
+                {getStatusText(result.prediction)}
               </span>
             </div>
 
-            {/* Score Cards */}
-            <div className="grid grid-cols-3 gap-4 mb-6">
-              <div className="bg-muted/30 rounded-xl p-6 text-center">
-                <div className="text-3xl font-bold text-emerald-400 mb-1">
-                  {result.livenessScore.toFixed(2)}
-                </div>
-                <div className="text-sm text-muted-foreground">Liveness Score</div>
-              </div>
-              <div className="bg-muted/30 rounded-xl p-6 text-center">
-                <div className="text-3xl font-bold text-emerald-400 mb-1">
-                  {result.usageScore.toFixed(2)}
-                </div>
-                <div className="text-sm text-muted-foreground">Usage Score</div>
-              </div>
-              <div className="bg-muted/30 rounded-xl p-6 text-center">
-                <div className="text-3xl font-bold text-emerald-400 mb-1">
-                  {result.combinedScore.toFixed(2)}
-                </div>
-                <div className="text-sm text-muted-foreground">Combined Score</div>
-              </div>
-            </div>
-
             {/* Summary */}
-            <div className="bg-muted/20 rounded-xl p-4 border-l-4 border-emerald-500">
+            <div className={`bg-muted/20 rounded-xl p-4 border-l-4 ${result.prediction === "REAL" ? "border-emerald-500" : "border-amber-500"}`}>
               <p className="text-foreground">{result.summary}</p>
             </div>
 
